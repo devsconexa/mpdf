@@ -16092,6 +16092,7 @@ class Mpdf implements \Psr\Log\LoggerAwareInterface
 		for ($i = $array_size - 1; $i > 0; $i--) {
 			if ('' === $arrayaux[$i][0] && (isset($arrayaux[$i][16]) && $arrayaux[$i][16] !== '0') && empty($arrayaux[$i][7])) {
 				unset($arrayaux[$i]);
+				$array_size--;
 			}
 		}
 
