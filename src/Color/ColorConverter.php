@@ -194,7 +194,7 @@ class ColorConverter
 			$c = $this->processHashColor($color);
 		} elseif (preg_match('/(rgba|rgb|device-cmyka|cmyka|device-cmyk|cmyk|hsla|hsl|spot)\((.*?)\)/', $color, $m)) {
 			// ignore colors containing CSS variables
-			if (str_starts_with(mb_strtolower($m[2]), 'var(--')) {
+			if (strpos(mb_strtolower($m[2]), 'var(--') !== false) {
 				$m[2] = '0, 0, 0, 100';
 			}
 			$c = $this->processModeColor($m[1], explode(',', $m[2]));
@@ -245,6 +245,11 @@ class ColorConverter
 				return [static::MODE_RGB, $cores[0], $cores[1], $cores[2]];
 
 			case 'rgba':
+				foreach($cores as $color){
+                    if (strpos($color, 'var(--') !== false) {
+                        $cores[$color] = $this->convertPlain($color);
+                    }
+                }
 				return [static::MODE_RGBA, $cores[0], $cores[1], $cores[2], $cores[3] * 100];
 
 			case 'cmyk':
