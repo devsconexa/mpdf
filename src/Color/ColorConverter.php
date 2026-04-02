@@ -245,11 +245,6 @@ class ColorConverter
 				return [static::MODE_RGB, $cores[0], $cores[1], $cores[2]];
 
 			case 'rgba':
-				foreach($cores as $color){
-                    if (strpos($color, 'var(--') !== false) {
-                        $cores[$color] = $this->convertPlain($color);
-                    }
-                }
 				return [static::MODE_RGBA, $cores[0], $cores[1], $cores[2], $cores[3] * 100];
 
 			case 'cmyk':
