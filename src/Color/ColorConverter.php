@@ -194,7 +194,7 @@ class ColorConverter
 			$c = $this->processHashColor($color);
 		} elseif (preg_match('/(rgba|rgb|device-cmyka|cmyka|device-cmyk|cmyk|hsla|hsl|spot)\((.*?)\)/', $color, $m)) {
 			// ignore colors containing CSS variables
-			if (str_starts_with(mb_strtolower($m[2]), 'var(--')) {
+			if (strpos(mb_strtolower($m[2]), 'var(--') !== false) {
 				$m[2] = '0, 0, 0, 100';
 			}
 			$c = $this->processModeColor($m[1], explode(',', $m[2]));
