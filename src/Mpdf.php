@@ -18633,12 +18633,21 @@ class Mpdf implements \Psr\Log\LoggerAwareInterface
 					}
 					break;
 
-				case 'FONT-WEIGHT': // normal bold // Does not support: bolder, lighter, 100..900(step value=100)
+				case 'FONT-WEIGHT': // Numeric weights use the available normal (100-500) and bold (600-900) faces.
 					switch (strtoupper($v)) {
 						case 'BOLD':
+						case '600':
+						case '700':
+						case '800':
+						case '900':
 							$this->SetStyle('B', true);
 							break;
 						case 'NORMAL':
+						case '100':
+						case '200':
+						case '300':
+						case '400':
+						case '500':
 							$this->SetStyle('B', false);
 							break;
 					}
