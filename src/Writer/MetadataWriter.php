@@ -62,9 +62,9 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 		$m .= ' <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="3.1-701">' . "\n";
 		$m .= '  <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">' . "\n";
 		$m .= '   <rdf:Description rdf:about="uuid:' . $uuid . '" xmlns:pdf="http://ns.adobe.com/pdf/1.3/">' . "\n";
-		$m .= '    <pdf:Producer>' . $this->getProducerString() . '</pdf:Producer>' . "\n";
+		$m .= '    <pdf:Producer>' . htmlspecialchars($this->getProducerString(), ENT_QUOTES | ENT_XML1) . '</pdf:Producer>' . "\n";
 		if (!empty($this->mpdf->keywords)) {
-			$m .= '    <pdf:Keywords>' . $this->mpdf->keywords . '</pdf:Keywords>' . "\n";
+			$m .= '    <pdf:Keywords>' . htmlspecialchars($this->mpdf->keywords, ENT_QUOTES | ENT_XML1) . '</pdf:Keywords>' . "\n";
 		}
 		$m .= '   </rdf:Description>' . "\n";
 
@@ -73,7 +73,7 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 		$m .= '    <xmp:ModifyDate>' . $CreationDate . '</xmp:ModifyDate>' . "\n";
 		$m .= '    <xmp:MetadataDate>' . $CreationDate . '</xmp:MetadataDate>' . "\n";
 		if (!empty($this->mpdf->creator)) {
-			$m .= '    <xmp:CreatorTool>' . $this->mpdf->creator . '</xmp:CreatorTool>' . "\n";
+			$m .= '    <xmp:CreatorTool>' . htmlspecialchars($this->mpdf->creator, ENT_QUOTES | ENT_XML1) . '</xmp:CreatorTool>' . "\n";
 		}
 		$m .= '   </rdf:Description>' . "\n";
 
@@ -83,28 +83,28 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 		if (!empty($this->mpdf->title)) {
 			$m .= '    <dc:title>
 	 <rdf:Alt>
-	  <rdf:li xml:lang="x-default">' . $this->mpdf->title . '</rdf:li>
+	  <rdf:li xml:lang="x-default">' . htmlspecialchars($this->mpdf->title, ENT_QUOTES | ENT_XML1) . '</rdf:li>
 	 </rdf:Alt>
 	</dc:title>' . "\n";
 		}
 		if (!empty($this->mpdf->keywords)) {
 			$m .= '    <dc:subject>
 	 <rdf:Bag>
-	  <rdf:li>' . $this->mpdf->keywords . '</rdf:li>
+	  <rdf:li>' . htmlspecialchars($this->mpdf->keywords, ENT_QUOTES | ENT_XML1) . '</rdf:li>
 	 </rdf:Bag>
 	</dc:subject>' . "\n";
 		}
 		if (!empty($this->mpdf->subject)) {
 			$m .= '    <dc:description>
 	 <rdf:Alt>
-	  <rdf:li xml:lang="x-default">' . $this->mpdf->subject . '</rdf:li>
+	  <rdf:li xml:lang="x-default">' . htmlspecialchars($this->mpdf->subject, ENT_QUOTES | ENT_XML1) . '</rdf:li>
 	 </rdf:Alt>
 	</dc:description>' . "\n";
 		}
 		if (!empty($this->mpdf->author)) {
 			$m .= '    <dc:creator>
 	 <rdf:Seq>
-	  <rdf:li>' . $this->mpdf->author . '</rdf:li>
+	  <rdf:li>' . htmlspecialchars($this->mpdf->author, ENT_QUOTES | ENT_XML1) . '</rdf:li>
 	 </rdf:Seq>
 	</dc:creator>' . "\n";
 		}
@@ -328,6 +328,16 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 	public function writeCatalog() //_putcatalog
 	{
 		$this->writer->write('/Type /Catalog');
+
+		// PDF/A-2 and PDF/A-3 are based on PDF 1.7 (ISO 32000-1).
+		// The /Version entry in the catalog overrides the header version.
+		if ($this->mpdf->PDFA && strpos($this->mpdf->PDFAversion, '-') !== false) {
+			list($part) = explode('-', $this->mpdf->PDFAversion);
+			if ((int) $part >= 2) {
+				$this->writer->write('/Version /1.7');
+			}
+		}
+
 		$this->writer->write('/Pages 1 0 R');
 
 		if (is_string($this->mpdf->currentLang)) {
@@ -520,28 +530,23 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 					foreach ($this->mpdf->PageLinks[$n] as $key => $pl) {
 
 						$this->writer->object();
-						$annot = '';
-
 						$rect = sprintf('%.3F %.3F %.3F %.3F', $pl[0], $pl[1], $pl[0] + $pl[2], $pl[1] - $pl[3]);
+						$this->writer->write('<</Type /Annot /Subtype /Link /Rect [' . $rect . ']', false);
 
-						$annot .= '<</Type /Annot /Subtype /Link /Rect [' . $rect . ']';
 						// Removed as causing undesired effects in Chrome PDF viewer https://github.com/mpdf/mpdf/issues/283
-						// $annot .= ' /Contents ' . $this->writer->utf16BigEndianTextString($pl[4]);
-						$annot .= ' /NM ' . $this->writer->string(sprintf('%04u-%04u', $n, $key));
-						$annot .= ' /M ' . $this->writer->string('D:' . date('YmdHis'));
-
-						$annot .= ' /Border [0 0 0]';
+						// $this->writer->write(' /Contents ' . $this->writer->utf16BigEndianTextString($pl[4]);
+						$this->writer->write(' /NM ' . $this->writer->string(sprintf('%04u-%04u', $n, $key)), false);
+						$this->writer->write(' /M ' . $this->writer->string('D:' . date('YmdHis')), false);
 
 						// Use this (instead of /Border) to specify border around link
-
-						// $annot .= ' /BS <</W 1';	// Width on points; 0 = no line
-						// $annot .= ' /S /D';		// style - [S]olid, [D]ashed, [B]eveled, [I]nset, [U]nderline
-						// $annot .= ' /D [3 2]';		// Dash array - if dashed
-						// $annot .= ' >>';
-						// $annot .= ' /C [1 0 0]';	// Color RGB
+						// $this->writer->write(' /BS <</W 1');	// Width on points; 0 = no line
+						// $this->writer->write(' /S /D');		// style - [S]olid, [D]ashed, [B]eveled, [I]nset, [U]nderline
+						// $this->writer->write(' /D [3 2]');		// Dash array - if dashed
+						// $this->writer->write(' >>');
+						// $this->writer->write(' /C [1 0 0]');	// Color RGB
 
 						if ($this->mpdf->PDFA || $this->mpdf->PDFX) {
-							$annot .= ' /F 28';
+							$this->writer->write(' /F 28', false);
 						}
 
 						if (strpos($pl[4], '@') === 0) {
@@ -549,12 +554,37 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 							$p = substr($pl[4], 1);
 							// $h=isset($this->mpdf->OrientationChanges[$p]) ? $wPt : $hPt;
 							$htarg = $this->mpdf->pageDim[$p]['h'] * Mpdf::SCALE;
-							$annot .= sprintf(' /Dest [%d 0 R /XYZ 0 %.3F null]>>', 1 + 2 * $p, $htarg);
+							$this->writer->write(sprintf(' /Dest [%d 0 R /XYZ 0 %.3F null]>>', 1 + 2 * $p, $htarg));
+							$this->writer->write(' /Border [0 0 0]', false);
 
 						} elseif (is_string($pl[4])) {
+							/**
+							 * This block is from the FPDI library
+							 * @copyright Copyright (c) 2024 Setasign GmbH & Co. KG (https://www.setasign.com)
+							 * @license http://opensource.org/licenses/mit-license The MIT License
+							 */
+							if (isset($pl['importedLink'])) {
+								$this->writer->write('/A <</S /URI /URI ' . $this->writer->string($pl[4]) . '>>');
+								$values = $pl['importedLink']['pdfObject']->value;
 
-							$annot .= ' /A <</S /URI /URI ' . $this->writer->string($pl[4]) . '>> >>';
+								foreach ($values as $name => $entry) {
+									$this->writer->write('/' . $name . ' ', false);
+									$this->mpdf->writePdfType($entry);
+								}
 
+								if (isset($pl['quadPoints'])) {
+									$s = '/QuadPoints[';
+									foreach ($pl['quadPoints'] as $value) {
+										$s .= sprintf('%.3F ', $value);
+									}
+									$s .= ']';
+									$this->writer->write($s);
+								}
+							} else {
+								$this->writer->write(' /A <</S /URI /URI ' . $this->writer->string($pl[4]) . '>>');
+								$this->writer->write(' /Border [0 0 0]', false);
+							}
+							$this->writer->write('>>');
 						} else {
 
 							$l = $this->mpdf->links[$pl[4]];
@@ -565,10 +595,10 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 								$htarg = $this->mpdf->h * Mpdf::SCALE;
 							} // doesn't really matter
 
-							$annot .= sprintf(' /Dest [%d 0 R /XYZ 0 %.3F null]>>', 1 + 2 * $l[0], $htarg - $l[1] * Mpdf::SCALE);
+							$this->writer->write(sprintf(' /Dest [%d 0 R /XYZ 0 %.3F null]>>', 1 + 2 * $l[0], $htarg - $l[1] * Mpdf::SCALE));
+							$this->writer->write(' /Border [0 0 0]', false);
 						}
 
-						$this->writer->write($annot);
 						$this->writer->write('endobj');
 
 					}
@@ -801,7 +831,7 @@ class MetadataWriter implements \Psr\Log\LoggerAwareInterface
 			$this->writer->write('/Encrypt ' . $this->mpdf->enc_obj_id . ' 0 R');
 			$this->writer->write('/ID [<' . $this->protection->getUniqid() . '> <' . $this->protection->getUniqid() . '>]');
 		} else {
-			$uniqid = md5(time() . $this->mpdf->buffer);
+			$uniqid = md5(time() . $this->mpdf->buffer->getHash());
 			$this->writer->write('/ID [<' . $uniqid . '> <' . $uniqid . '>]');
 		}
 	}
